@@ -73,7 +73,7 @@ The expected keystore uses alias `androiddebugkey` and password `android`, match
 
 ## Publishing an in-app update
 
-Routine releases are automatic after the source is reviewed and promoted to the private repository's `main` branch with a higher `versionName` and `versionCode` in `app/build.gradle.kts`. The scheduled workflow checks every 15 minutes, runs unit tests, builds the APK, verifies alignment, package/version metadata, SHA-256 and the established signing certificate, then creates the GitHub Release asset and updates `latest.json`.
+Routine releases are automatic after the source is reviewed and promoted to the private repository's `main` branch with a higher `versionName` and `versionCode` in `app/build.gradle.kts`. The scheduled workflow checks every 15 minutes, runs unit tests, builds the APK, verifies alignment, package/version metadata, minSdk 26, targetSdk 36 and the established signing certificate, then independently downloads the uploaded release asset and compares its SHA-256 before updating `latest.json`.
 
 For an immediate/manual release, run the workflow with source ref `main` and enable **Publish this verified build**.
 
@@ -85,6 +85,8 @@ The installed app can then use **You → Check for updates → Download & instal
 - The source checkout token is read-only and limited to the private ApexPulse repository.
 - Feature-branch builds never receive the production signing keystore; only the trusted `main` release path can access it.
 - The scheduled workflow publishes only when the private source `main` branch has a higher versionName and versionCode than the currently published release; it does not publish ordinary commits.
-- Publishing is refused unless the source ref is `main` and the version code is higher than the currently published version.
+- Publishing is refused unless the source ref is `main`, both versionName and versionCode are newer, and the candidate is internally consistent.
+- The APK must retain minSdk 26 and targetSdk 36 until the Android 17 local-network permission flow is implemented.
+- The uploaded release asset is downloaded again and its SHA-256 must match the verified build before `latest.json` is changed.
 - The signing certificate must match SHA-1 `A70ADF61BB307148D1E064DEE91B7723D0654951`.
 - The app remains Wi-Fi-only for telemetry and update downloads.
