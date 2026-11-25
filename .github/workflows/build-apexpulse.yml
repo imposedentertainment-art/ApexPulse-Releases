@@ -157,6 +157,8 @@ jobs:
         if: ${{ steps.gate.outputs.should_build == 'true' }}
         id: verify
         working-directory: source
+        env:
+          EXPECT_PRODUCTION_CERT: ${{ steps.preflight.outputs.use_production_signing }}
         run: |
           set -euo pipefail
           APK="$PWD/app/build/outputs/apk/debug/app-debug.apk"
