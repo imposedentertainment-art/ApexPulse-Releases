@@ -1,45 +1,56 @@
-# ApexPulse Releases
+# ApexPulse — Official Android Releases
 
-Official Android APK distribution for ApexPulse.
+This is the official public distribution repository for **ApexPulse**, the native Android sim-racing application from Imposed Entertainment.
 
-- APK binaries are attached to GitHub Releases.
-- `latest.json` is the public update manifest read by the Android app.
-- Application source code is kept in the separate [private ApexPulse source repository](https://github.com/imposedentertainment-art/ApexPulse).
+> **Release status:** The repository is prepared for distribution. No official APK release is published until a signed build has passed the release checks below.
 
-## Official download and update channel
+## Download ApexPulse
 
-The official Android APK is distributed as a **GitHub Release asset**, not committed into the repository's Git history. After the first verified release is published, the latest version will be available at:
+- **[All releases](https://github.com/imposedentertainment-art/ApexPulse-Releases/releases)**
+- **[Latest stable release](https://github.com/imposedentertainment-art/ApexPulse-Releases/releases/latest)**
 
-- Releases: https://github.com/imposedentertainment-art/ApexPulse-Releases/releases
-- Latest release: https://github.com/imposedentertainment-art/ApexPulse-Releases/releases/latest
-- Update manifest: https://raw.githubusercontent.com/imposedentertainment-art/ApexPulse-Releases/main/latest.json
+When a release is available, download the APK asset attached to the latest stable GitHub Release. Android will ask you to confirm installation.
 
-The manifest is intentionally absent until a real signed APK has been uploaded and independently checked. The app uses the manifest only for optional updates; its simulator and session features remain local to the Android device.
+## In-app updates
 
-## Manual release process
+ApexPulse can check this repository for optional updates using the public manifest:
 
-This project does **not** use GitHub Actions. Releases are built and verified locally, then uploaded manually.
+`https://raw.githubusercontent.com/imposedentertainment-art/ApexPulse-Releases/main/latest.json`
 
-1. Build the APK from a reviewed commit in the private source repository.
-2. Sign it with the established ApexPulse signing identity.
-3. Verify the APK signature and alignment.
-4. Install it over the existing app to confirm update compatibility.
-5. Calculate SHA-256 from the exact final APK.
-6. Create a GitHub Release here and attach the APK.
-7. Verify the uploaded asset URL and checksum.
-8. Update `latest.json` only after all checks pass.
+The manifest is intentionally not present until the first verified APK has been published. It will contain the release version, Android version code, minimum supported version (when applicable), exact APK download URL, SHA-256 checksum, and release notes.
 
-Do not publish placeholder manifests, fake checksums, unsigned APKs, or APKs signed with a different key.
+The app verifies the downloaded file before handing it to Android's package installer. Android still requires the user to approve installation. Updates must retain the ApexPulse package ID and signing identity.
 
-## Update manifest
+## Privacy and connectivity
 
-The root-level `latest.json` is intentionally absent until a verified release exists. When published, it uses:
+ApexPulse is designed to keep simulator and session functionality on the device. This repository provides the optional update channel; it is not an application backend or account service. Checking for updates and downloading a release require an internet connection.
 
-- `version`: Semantic Versioning version string.
-- `versionCode`: monotonically increasing Android version code.
-- `minimumVersion`: optional minimum supported version.
-- `downloadUrl`: HTTPS GitHub Release asset URL for the APK.
-- `sha256`: 64-character SHA-256 checksum of that APK.
-- `releaseNotes`: user-facing release notes.
+## Release integrity
 
-Android requires user confirmation to install an update. The APK must retain the installed application's package ID and signing certificate.
+Official APKs are distributed as GitHub Release assets rather than committed to Git history. Each stable release must be:
+
+1. Built from a reviewed source commit in the private [ApexPulse source repository](https://github.com/imposedentertainment-art/ApexPulse).
+2. Signed with the established ApexPulse signing key.
+3. Checked for package ID, version code/name, APK alignment, and signature validity.
+4. Installed over an existing build to verify upgrade compatibility and basic device operation.
+5. Hashed with SHA-256.
+6. Uploaded as a GitHub Release asset and downloaded again for independent checksum verification.
+7. Reflected in `latest.json` only after the uploaded asset has passed verification.
+
+See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md) for the publication procedure. GitHub Actions are not required; releases are published manually.
+
+## Repository contents
+
+- GitHub Releases: signed APK distribution.
+- `latest.json`: public in-app update manifest, added only after a real release is verified.
+- `RELEASE-CHECKLIST.md`: maintainer release procedure.
+- `SECURITY.md`: vulnerability reporting guidance.
+- `SUPPORT.md`: user support guidance.
+
+## Source code
+
+The application source is maintained separately in the private [ApexPulse repository](https://github.com/imposedentertainment-art/ApexPulse). This repository contains distribution materials, not the application source.
+
+## Important
+
+Only install ApexPulse APKs published by the official Imposed Entertainment account in this repository. Do not install unofficial APKs or share signing keys, keystores, passwords, or release credentials.
