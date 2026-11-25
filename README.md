@@ -23,7 +23,7 @@ The app verifies the downloaded file before handing it to Android's package inst
 
 ## Privacy and connectivity
 
-ApexPulse is designed to keep simulator and session functionality on the device. This repository provides the optional update channel; it is not an application backend or account service. Checking for updates and downloading a release require an internet connection.
+ApexPulse is designed to keep simulator and session functionality on the device. This repository provides the optional update channel; it is not an application backend or account service. Checking for updates, downloading releases, and simulator telemetry require Wi-Fi. ApexPulse deliberately blocks cellular/mobile-data network use.
 
 ## Release integrity
 
@@ -37,7 +37,7 @@ Official APKs are distributed as GitHub Release assets rather than committed to 
 6. Uploaded as a GitHub Release asset and downloaded again for independent checksum verification.
 7. Reflected in `latest.json` only after the uploaded asset has passed verification.
 
-See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md) for the publication procedure. GitHub Actions are not required; releases are published manually.
+See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md) for the publication gates and [BUILD-SETUP.md](BUILD-SETUP.md) for the one-time setup of the hosted build and in-app publishing workflow. The workflow runs on this public distribution repository so standard hosted runners do not consume the private source repository's Actions allowance.
 
 ## Repository contents
 
@@ -46,6 +46,8 @@ See [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md) for the publication procedure. 
 - `RELEASE-CHECKLIST.md`: maintainer release procedure.
 - `SECURITY.md`: vulnerability reporting guidance.
 - `SUPPORT.md`: user support guidance.
+- `.github/workflows/build-apexpulse.yml`: manual hosted build, verification and release publication workflow.
+- `BUILD-SETUP.md`: required one-time secret setup.
 
 ## Source code
 
