@@ -1,6 +1,6 @@
 # ApexPulse hosted build setup
 
-This repository now contains a hosted Android build and release workflow at **Actions → Build and publish ApexPulse**.
+This repository now contains a hosted Android build and release workflow. After the one-time secrets are configured, it checks the private source repository's `main` branch every 15 minutes. When it detects a newer versionName and versionCode, it runs tests, builds and verifies the APK, publishes the release asset, and updates `latest.json`. No Termux or manual workflow run is needed for routine releases.
 
 It runs on GitHub's standard hosted Linux runner from this **public release repository**, so it does not consume the exhausted private-source-repository Actions allowance. GitHub documents standard hosted runner use in public repositories as free and unlimited:
 https://docs.github.com/en/actions/concepts/billing-and-usage
@@ -41,23 +41,19 @@ Because Android keeps Termux's private home separate from shared storage, export
 
 The expected keystore uses alias `androiddebugkey` and password `android`, matching the existing build configuration. If the backup has different credentials, the workflow must be adjusted before use.
 
-## Running a build
+## Testing a feature branch
 
 1. Open **Actions** in this repository.
 2. Select **Build and publish ApexPulse**.
-3. Choose the private source ref. Use a feature branch for test builds; use `main` only after the source has been reviewed and promoted.
-4. Leave **Publish this verified build** disabled for a test build.
+3. Choose the feature branch as the source ref.
+4. Leave **Publish this verified build** disabled.
 5. Run the workflow and download the resulting APK from the workflow artifact.
 
 ## Publishing an in-app update
 
-Only publish after the source has been promoted to the private repository's `main` branch and the version has been increased in `app/build.gradle.kts`.
+Routine releases are automatic after the source is reviewed and promoted to the private repository's `main` branch with a higher `versionName` and `versionCode` in `app/build.gradle.kts`. The scheduled workflow checks every 15 minutes, runs unit tests, builds the APK, verifies alignment, package/version metadata, SHA-256 and the established signing certificate, then creates the GitHub Release asset and updates `latest.json`.
 
-1. Run the workflow with source ref `main`.
-2. Enable **Publish this verified build**.
-3. Enter release notes.
-4. The workflow runs unit tests, builds the APK, verifies alignment, package/version metadata, SHA-256 and the established signing certificate.
-5. It creates or updates the GitHub Release asset and updates `latest.json`.
+For an immediate/manual release, run the workflow with source ref `main` and enable **Publish this verified build**.
 
 The installed app can then use **You → Check for updates → Download & install**. The app verifies the download checksum, package identity, version and signing certificate before opening Android's installer.
 
@@ -65,7 +61,7 @@ The installed app can then use **You → Check for updates → Download & instal
 
 - No keystore or token is stored in Git.
 - The source checkout token is read-only and limited to the private ApexPulse repository.
-- The release workflow is manual; it does not publish every push.
+- The scheduled workflow publishes only when the private source `main` branch has a higher versionName and versionCode than the currently published release; it does not publish ordinary commits.
 - Publishing is refused unless the source ref is `main` and the version code is higher than the currently published version.
 - The signing certificate must match SHA-1 `A70ADF61BB307148D1E064DEE91B7723D0654951`.
 - The app remains Wi-Fi-only for telemetry and update downloads.
