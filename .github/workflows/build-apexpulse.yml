@@ -1,6 +1,8 @@
 name: Build and publish ApexPulse
 
 on:
+  schedule:
+    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       source_ref:
@@ -36,44 +38,82 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate required secrets
+      - name: Check one-time setup
+        id: preflight
         env:
           SOURCE_TOKEN: ${{ secrets.APEXPULSE_SOURCE_TOKEN }}
           SIGNING_KEYSTORE_B64: ${{ secrets.APEXPULSE_SIGNING_KEYSTORE_B64 }}
         run: |
           set -euo pipefail
-          [[ -n "$SOURCE_TOKEN" ]] || { echo "::error::Missing APEXPULSE_SOURCE_TOKEN secret."; exit 1; }
-          [[ -n "$SIGNING_KEYSTORE_B64" ]] || { echo "::error::Missing APEXPULSE_SIGNING_KEYSTORE_B64 secret."; exit 1; }
+          if [[ -z "$SOURCE_TOKEN" || -z "$SIGNING_KEYSTORE_B64" ]]; then
+            if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
+              echo "Scheduled check skipped: configure APEXPULSE_SOURCE_TOKEN and APEXPULSE_SIGNING_KEYSTORE_B64 first."
+              echo "should_run=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "::error::Configure APEXPULSE_SOURCE_TOKEN and APEXPULSE_SIGNING_KEYSTORE_B64 as documented in BUILD-SETUP.md."
+            exit 1
+          fi
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
 
       - name: Checkout private ApexPulse source
+        if: ${{ steps.preflight.outputs.should_run == 'true' }}
         uses: actions/checkout@v4
         with:
           repository: imposedentertainment-art/ApexPulse
-          ref: ${{ inputs.source_ref }}
+          ref: ${{ inputs.source_ref || 'main' }}
           token: ${{ secrets.APEXPULSE_SOURCE_TOKEN }}
           path: source
           persist-credentials: false
 
+      - name: Check whether a build is due
+        id: gate
+        if: ${{ steps.preflight.outputs.should_run == 'true' }}
+        working-directory: source
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" != "schedule" ]]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          SOURCE_CODE="$(sed -n 's/^[[:space:]]*versionCode = \\([0-9][0-9]*\\)$/\\1/p' app/build.gradle.kts | head -n 1)"
+          SOURCE_VERSION="$(sed -n 's/^[[:space:]]*versionName = "\\([^"]*\\)"$/\\1/p' app/build.gradle.kts | head -n 1)"
+          CURRENT_CODE="$(jq -r '.versionCode // 0' "$GITHUB_WORKSPACE/latest.json")"
+          CURRENT_VERSION="$(jq -r '.version // "0.0.0"' "$GITHUB_WORKSPACE/latest.json")"
+          SORTED_VERSION="$(printf '%s\\n' "$CURRENT_VERSION" "$SOURCE_VERSION" | sort -V | tail -n 1)"
+          if [[ -n "$SOURCE_CODE" && -n "$SOURCE_VERSION" && "$SOURCE_VERSION" != "$CURRENT_VERSION" && "$SORTED_VERSION" == "$SOURCE_VERSION" ]] && (( SOURCE_CODE > CURRENT_CODE )); then
+            echo "New source release detected: $SOURCE_VERSION ($SOURCE_CODE)."
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No newer version is ready. Current published release: $CURRENT_VERSION ($CURRENT_CODE)."
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Java 21
+        if: ${{ steps.gate.outputs.should_build == 'true' }}
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Set up Android SDK
+        if: ${{ steps.gate.outputs.should_build == 'true' }}
         uses: android-actions/setup-android@v3
 
       - name: Set up Gradle
+        if: ${{ steps.gate.outputs.should_build == 'true' }}
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.9.2"
 
       - name: Install Android SDK components
+        if: ${{ steps.gate.outputs.should_build == 'true' }}
         run: |
           yes | sdkmanager --licenses >/dev/null
           sdkmanager "platforms;android-37" "build-tools;36.1.0"
 
       - name: Restore the established ApexPulse signing identity
+        if: ${{ steps.gate.outputs.should_build == 'true' }}
         env:
           SIGNING_KEYSTORE_B64: ${{ secrets.APEXPULSE_SIGNING_KEYSTORE_B64 }}
         run: |
@@ -87,12 +127,14 @@ jobs:
           echo "Verified the established ApexPulse signing certificate."
 
       - name: Run unit tests and build APK
+        if: ${{ steps.gate.outputs.should_build == 'true' }}
         working-directory: source
         run: |
           set -euo pipefail
           gradle --no-daemon --max-workers=2 :app:testDebugUnitTest :app:assembleDebug
 
       - name: Verify APK, package, version and signing identity
+        if: ${{ steps.gate.outputs.should_build == 'true' }}
         id: verify
         working-directory: source
         run: |
@@ -116,6 +158,7 @@ jobs:
           echo "APK verified: $VERSION_NAME ($VERSION_CODE), SHA-256 $SHA256"
 
       - name: Upload test build artifact
+        if: ${{ steps.gate.outputs.should_build == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: ApexPulse-${{ steps.verify.outputs.version }}-${{ steps.verify.outputs.version_code }}
@@ -124,7 +167,7 @@ jobs:
           retention-days: 14
 
       - name: Publish signed APK release
-        if: ${{ inputs.publish_release }}
+        if: ${{ steps.gate.outputs.should_build == 'true' && (github.event_name == 'schedule' || inputs.publish_release) }}
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.verify.outputs.version }}
@@ -132,7 +175,7 @@ jobs:
           APK_SHA256: ${{ steps.verify.outputs.sha256 }}
           APK_PATH: ${{ steps.verify.outputs.apk }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
-          SOURCE_REF: ${{ inputs.source_ref }}
+          SOURCE_REF: ${{ inputs.source_ref || 'main' }}
         run: |
           set -euo pipefail
           [[ "$SOURCE_REF" == "main" ]] || { echo "::error::Publishing is only allowed from the private source repository's main branch."; exit 1; }
