@@ -1,0 +1,8 @@
+{
+  "version": "1.3.0",
+  "versionCode": 6,
+  "minimumVersion": "1.2.1",
+  "downloadUrl": "https://github.com/imposedentertainment-art/ApexPulse-Releases/releases/download/v1.3.0/ApexPulse-1.3.0.apk",
+  "sha256": "3257aa9d669c120ec12fd7229e797408f8fd4a34e3f94d11d59ef453c3854d6c",
+  "releaseNotes": "The first official ApexPulse release. Local-first simulator discovery, telemetry capture and session archive, with verified in-app updates."
+}
