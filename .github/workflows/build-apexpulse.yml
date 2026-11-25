@@ -76,11 +76,11 @@ jobs:
             echo "should_build=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          SOURCE_CODE="$(sed -n 's/^[[:space:]]*versionCode = \\([0-9][0-9]*\\)$/\\1/p' app/build.gradle.kts | head -n 1)"
-          SOURCE_VERSION="$(sed -n 's/^[[:space:]]*versionName = "\\([^"]*\\)"$/\\1/p' app/build.gradle.kts | head -n 1)"
+          SOURCE_CODE="$(sed -n 's/^[[:space:]]*versionCode = \([0-9][0-9]*\)$/\1/p' app/build.gradle.kts | head -n 1)"
+          SOURCE_VERSION="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"$/\1/p' app/build.gradle.kts | head -n 1)"
           CURRENT_CODE="$(jq -r '.versionCode // 0' "$GITHUB_WORKSPACE/latest.json")"
           CURRENT_VERSION="$(jq -r '.version // "0.0.0"' "$GITHUB_WORKSPACE/latest.json")"
-          SORTED_VERSION="$(printf '%s\\n' "$CURRENT_VERSION" "$SOURCE_VERSION" | sort -V | tail -n 1)"
+          SORTED_VERSION="$(printf '%s\n' "$CURRENT_VERSION" "$SOURCE_VERSION" | sort -V | tail -n 1)"
           if [[ -n "$SOURCE_CODE" && -n "$SOURCE_VERSION" && "$SOURCE_VERSION" != "$CURRENT_VERSION" && "$SORTED_VERSION" == "$SOURCE_VERSION" ]] && (( SOURCE_CODE > CURRENT_CODE )); then
             echo "New source release detected: $SOURCE_VERSION ($SOURCE_CODE)."
             echo "should_build=true" >> "$GITHUB_OUTPUT"
@@ -178,6 +178,7 @@ jobs:
           SOURCE_REF: ${{ inputs.source_ref || 'main' }}
         run: |
           set -euo pipefail
+          RELEASE_NOTES="${RELEASE_NOTES:-Automated ApexPulse update}"
           [[ "$SOURCE_REF" == "main" ]] || { echo "::error::Publishing is only allowed from the private source repository's main branch."; exit 1; }
           CURRENT_CODE="$(jq -r '.versionCode // 0' latest.json)"
           if (( VERSION_CODE <= CURRENT_CODE )); then
