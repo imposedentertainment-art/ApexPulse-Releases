@@ -7,7 +7,7 @@ https://docs.github.com/en/actions/concepts/billing-and-usage
 
 ## One-time setup
 
-The workflow deliberately requires two repository secrets. It will not build or publish without them.
+The workflow uses two repository secrets for production builds and automatic releases. Feature-branch test builds need only the read-only source token and use a temporary signing identity; those test APKs cannot update the installed production app.
 
 Open **Settings → Secrets and variables → Actions → New repository secret** in this repository.
 
@@ -37,17 +37,38 @@ The current Termux signing backup is normally at:
 
 `~/ApexPulse-signing-backup/apexpulse-release.keystore`
 
-Because Android keeps Termux's private home separate from shared storage, exporting this key to a location that can be selected in a browser/file picker requires a one-time local export. After the secret is configured, routine builds and releases do not require Termux.
+Because Android keeps Termux's private home separate from shared storage, exporting this key requires one final, one-time Termux operation. Run this in the ApexPulse Termux environment. It checks both known key locations and exports only the key whose SHA-1 matches the installed app:
 
-The expected keystore uses alias `androiddebugkey` and password `android`, matching the existing build configuration. If the backup has different credentials, the workflow must be adjusted before use.
+```bash
+EXPECTED="A70ADF61BB307148D1E064DEE91B7723D0654951"
+mkdir -p "$HOME/storage/downloads"
+for KEY in "$HOME/.android/debug.keystore" "$HOME/ApexPulse-signing-backup/apexpulse-release.keystore"; do
+  [ -s "$KEY" ] || continue
+  SHA1="$(keytool -list -v -keystore "$KEY" -storepass android -alias androiddebugkey 2>/dev/null | sed -n 's/.*SHA1: *//p' | head -n 1 | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+  if [ "$SHA1" = "$EXPECTED" ]; then
+    base64 "$KEY" | tr -d '\r\n' > "$HOME/storage/downloads/APEXPULSE_SIGNING_KEYSTORE_B64.txt"
+    echo "Verified signing key exported to Downloads."
+    exit 0
+  fi
+done
+echo "ERROR: Neither known keystore matches the installed ApexPulse certificate. Nothing was exported."
+exit 1
+```
+
+If `$HOME/storage/downloads` is not linked to Android's Downloads folder, run `termux-setup-storage` once and grant access, then rerun the command.
+
+Open `APEXPULSE_SIGNING_KEYSTORE_B64.txt` from Downloads, copy its entire contents, and paste it into the GitHub secret value. Do not paste the value into ChatGPT, an issue, a commit, or a public file. Delete the temporary text file after the secret has been saved.
+
+The expected keystore uses alias `androiddebugkey` and password `android`, matching the existing build configuration. After this one-time export and secret setup, routine builds, signing, publishing and in-app updates do not require Termux.
 
 ## Testing a feature branch
 
-1. Open **Actions** in this repository.
-2. Select **Build and publish ApexPulse**.
-3. Choose the feature branch as the source ref.
-4. Leave **Publish this verified build** disabled.
-5. Run the workflow and download the resulting APK from the workflow artifact.
+1. Configure `APEXPULSE_SOURCE_TOKEN` as described above.
+2. Open **Actions** in this repository.
+3. Select **Build and publish ApexPulse**.
+4. Choose the feature branch as the source ref.
+5. Leave **Publish this verified build** disabled.
+6. Run the workflow and download the resulting APK from the workflow artifact. It is signed with a temporary key and is for build verification only; it cannot update the production installation.
 
 ## Publishing an in-app update
 
@@ -61,6 +82,7 @@ The installed app can then use **You → Check for updates → Download & instal
 
 - No keystore or token is stored in Git.
 - The source checkout token is read-only and limited to the private ApexPulse repository.
+- Feature-branch builds never receive the production signing keystore; only the trusted `main` release path can access it.
 - The scheduled workflow publishes only when the private source `main` branch has a higher versionName and versionCode than the currently published release; it does not publish ordinary commits.
 - Publishing is refused unless the source ref is `main` and the version code is higher than the currently published version.
 - The signing certificate must match SHA-1 `A70ADF61BB307148D1E064DEE91B7723D0654951`.
