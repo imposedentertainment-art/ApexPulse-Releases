@@ -6,6 +6,16 @@ Official Android APK distribution for ApexPulse.
 - `latest.json` is the public update manifest read by the Android app.
 - Application source code is kept in the separate [private ApexPulse source repository](https://github.com/imposedentertainment-art/ApexPulse).
 
+## Official download and update channel
+
+The official Android APK is distributed as a **GitHub Release asset**, not committed into the repository's Git history. After the first verified release is published, the latest version will be available at:
+
+- Releases: https://github.com/imposedentertainment-art/ApexPulse-Releases/releases
+- Latest release: https://github.com/imposedentertainment-art/ApexPulse-Releases/releases/latest
+- Update manifest: https://raw.githubusercontent.com/imposedentertainment-art/ApexPulse-Releases/main/latest.json
+
+The manifest is intentionally absent until a real signed APK has been uploaded and independently checked. The app uses the manifest only for optional updates; its simulator and session features remain local to the Android device.
+
 ## Manual release process
 
 This project does **not** use GitHub Actions. Releases are built and verified locally, then uploaded manually.
