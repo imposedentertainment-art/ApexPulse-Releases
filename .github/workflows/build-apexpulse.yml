@@ -177,6 +177,8 @@ jobs:
           [[ -n "$VERSION_CODE" && -n "$VERSION_NAME" ]] || { echo "::error::Could not read version metadata."; exit 1; }
           BADGING="$("$ANDROID_HOME/build-tools/36.1.0/aapt2" dump badging "$APK")"
           grep -F "package: name='com.apexpulse.app' versionCode='$VERSION_CODE' versionName='$VERSION_NAME'" <<< "$BADGING" >/dev/null
+          grep -Fx "sdkVersion:'26'" <<< "$BADGING" >/dev/null || { echo "::error::Unexpected minSdk; expected 26."; exit 1; }
+          grep -Fx "targetSdkVersion:'36'" <<< "$BADGING" >/dev/null || { echo "::error::Unexpected targetSdk; expected 36 until Android 17 LAN permission handling is implemented."; exit 1; }
           SHA256="$(sha256sum "$APK" | awk '{print $1}')"
           echo "apk=$APK" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION_NAME" >> "$GITHUB_OUTPUT"
@@ -208,8 +210,10 @@ jobs:
           RELEASE_NOTES="${RELEASE_NOTES:-Automated ApexPulse update}"
           [[ "$SOURCE_REF" == "main" ]] || { echo "::error::Publishing is only allowed from the private source repository's main branch."; exit 1; }
           CURRENT_CODE="$(jq -r '.versionCode // 0' latest.json)"
-          if (( VERSION_CODE <= CURRENT_CODE )); then
-            echo "::error::Refusing to publish versionCode $VERSION_CODE; current published versionCode is $CURRENT_CODE. Bump app/build.gradle.kts first."
+          CURRENT_VERSION="$(jq -r '.version // "0.0.0"' latest.json)"
+          SORTED_VERSION="$(printf '%s\n' "$CURRENT_VERSION" "$VERSION" | sort -V | tail -n 1)"
+          if (( VERSION_CODE <= CURRENT_CODE )) || [[ "$VERSION" == "$CURRENT_VERSION" || "$SORTED_VERSION" != "$VERSION" ]]; then
+            echo "::error::Refusing to publish a non-newer or inconsistent version. Current: $CURRENT_VERSION ($CURRENT_CODE); candidate: $VERSION ($VERSION_CODE)."
             exit 1
           fi
           TAG="v$VERSION"
@@ -220,6 +224,12 @@ jobs:
             gh release create "$TAG" "$APK_PATH#$ASSET" --repo "$GITHUB_REPOSITORY" --title "ApexPulse $VERSION" --notes "$RELEASE_NOTES"
           fi
           DOWNLOAD_URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$ASSET"
+          REMOTE_APK="$(mktemp)"
+          trap 'rm -f "$REMOTE_APK"' EXIT
+          curl --fail --location --retry 3 --retry-delay 2 --output "$REMOTE_APK" "$DOWNLOAD_URL"
+          REMOTE_SHA256="$(sha256sum "$REMOTE_APK" | awk '{print $1}')"
+          [[ "$REMOTE_SHA256" == "$APK_SHA256" ]] || { echo "::error::Downloaded release asset checksum does not match the verified build. latest.json will not be updated."; exit 1; }
+          echo "Independently downloaded release asset and verified SHA-256."
           jq -n \
             --arg version "$VERSION" \
             --argjson versionCode "$VERSION_CODE" \
