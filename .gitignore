@@ -1,0 +1,16 @@
+# Local APKs and release artifacts
+*.apk
+*.aab
+*.apks
+*.aab
+*.jks
+*.keystore
+*.pem
+*.p12
+*.pfx
+
+# Local release metadata and secrets
+.env
+.env.*
+*.properties.local
+local.properties
