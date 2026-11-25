@@ -36,15 +36,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Checkout private ApexPulse source
-        uses: actions/checkout@v4
-        with:
-          repository: imposedentertainment-art/ApexPulse
-          ref: ${{ inputs.source_ref }}
-          token: ${{ secrets.APEXPULSE_SOURCE_TOKEN }}
-          path: source
-          persist-credentials: false
-
       - name: Validate required secrets
         env:
           SOURCE_TOKEN: ${{ secrets.APEXPULSE_SOURCE_TOKEN }}
@@ -53,6 +44,15 @@ jobs:
           set -euo pipefail
           [[ -n "$SOURCE_TOKEN" ]] || { echo "::error::Missing APEXPULSE_SOURCE_TOKEN secret."; exit 1; }
           [[ -n "$SIGNING_KEYSTORE_B64" ]] || { echo "::error::Missing APEXPULSE_SIGNING_KEYSTORE_B64 secret."; exit 1; }
+
+      - name: Checkout private ApexPulse source
+        uses: actions/checkout@v4
+        with:
+          repository: imposedentertainment-art/ApexPulse
+          ref: ${{ inputs.source_ref }}
+          token: ${{ secrets.APEXPULSE_SOURCE_TOKEN }}
+          path: source
+          persist-credentials: false
 
       - name: Set up Java 21
         uses: actions/setup-java@v4
@@ -99,14 +99,14 @@ jobs:
           set -euo pipefail
           APK="$PWD/app/build/outputs/apk/debug/app-debug.apk"
           [[ -s "$APK" ]] || { echo "::error::Gradle did not produce the APK."; exit 1; }
-          zipalign -c -v 4 "$APK"
-          CERT_INFO="$(apksigner verify --verbose --print-certs "$APK")"
+          "$ANDROID_HOME/build-tools/36.1.0/zipalign" -c -v 4 "$APK"
+          CERT_INFO="$("$ANDROID_HOME/build-tools/36.1.0/apksigner" verify --verbose --print-certs "$APK")"
           CERT_SHA1="$(printf '%s\n' "$CERT_INFO" | sed -n 's/.*certificate SHA-1 digest: *//p' | head -n 1 | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
           [[ "$CERT_SHA1" == "A70ADF61BB307148D1E064DEE91B7723D0654951" ]] || { echo "::error::APK signing certificate mismatch."; exit 1; }
           VERSION_CODE="$(sed -n 's/^[[:space:]]*versionCode = \([0-9][0-9]*\)$/\1/p' app/build.gradle.kts | head -n 1)"
           VERSION_NAME="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"$/\1/p' app/build.gradle.kts | head -n 1)"
           [[ -n "$VERSION_CODE" && -n "$VERSION_NAME" ]] || { echo "::error::Could not read version metadata."; exit 1; }
-          BADGING="$ANDROID_HOME/build-tools/36.1.0/aapt2 dump badging "$APK""
+          BADGING="$("$ANDROID_HOME/build-tools/36.1.0/aapt2" dump badging "$APK")"
           grep -F "package: name='com.apexpulse.app' versionCode='$VERSION_CODE' versionName='$VERSION_NAME'" <<< "$BADGING" >/dev/null
           SHA256="$(sha256sum "$APK" | awk '{print $1}')"
           echo "apk=$APK" >> "$GITHUB_OUTPUT"
