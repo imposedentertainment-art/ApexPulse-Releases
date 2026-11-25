@@ -43,17 +43,37 @@ jobs:
         env:
           SOURCE_TOKEN: ${{ secrets.APEXPULSE_SOURCE_TOKEN }}
           SIGNING_KEYSTORE_B64: ${{ secrets.APEXPULSE_SIGNING_KEYSTORE_B64 }}
+          SOURCE_REF: ${{ inputs.source_ref || 'main' }}
+          PUBLISH_RELEASE: ${{ inputs.publish_release }}
         run: |
           set -euo pipefail
-          if [[ -z "$SOURCE_TOKEN" || -z "$SIGNING_KEYSTORE_B64" ]]; then
+          if [[ -z "$SOURCE_TOKEN" ]]; then
             if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
-              echo "Scheduled check skipped: configure APEXPULSE_SOURCE_TOKEN and APEXPULSE_SIGNING_KEYSTORE_B64 first."
+              echo "Scheduled check skipped: configure APEXPULSE_SOURCE_TOKEN first."
               echo "should_run=false" >> "$GITHUB_OUTPUT"
               exit 0
             fi
-            echo "::error::Configure APEXPULSE_SOURCE_TOKEN and APEXPULSE_SIGNING_KEYSTORE_B64 as documented in BUILD-SETUP.md."
+            echo "::error::Configure APEXPULSE_SOURCE_TOKEN as documented in BUILD-SETUP.md."
             exit 1
           fi
+          if [[ "$PUBLISH_RELEASE" == "true" && "$SOURCE_REF" != "main" ]]; then
+            echo "::error::Feature branches cannot publish releases. Promote reviewed source to main first."
+            exit 1
+          fi
+          USE_PRODUCTION_SIGNING=false
+          if [[ "$GITHUB_EVENT_NAME" == "schedule" || "$SOURCE_REF" == "main" || "$PUBLISH_RELEASE" == "true" ]]; then
+            if [[ -z "$SIGNING_KEYSTORE_B64" ]]; then
+              if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
+                echo "Scheduled check skipped: configure APEXPULSE_SIGNING_KEYSTORE_B64 before automatic publishing."
+                echo "should_run=false" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "::error::Configure APEXPULSE_SIGNING_KEYSTORE_B64 before building main or publishing a release."
+              exit 1
+            fi
+            USE_PRODUCTION_SIGNING=true
+          fi
+          echo "use_production_signing=$USE_PRODUCTION_SIGNING" >> "$GITHUB_OUTPUT"
           echo "should_run=true" >> "$GITHUB_OUTPUT"
 
       - name: Checkout private ApexPulse source
@@ -113,7 +133,7 @@ jobs:
           sdkmanager "platforms;android-37" "build-tools;36.1.0"
 
       - name: Restore the established ApexPulse signing identity
-        if: ${{ steps.gate.outputs.should_build == 'true' }}
+        if: ${{ steps.gate.outputs.should_build == 'true' && steps.preflight.outputs.use_production_signing == 'true' }}
         env:
           SIGNING_KEYSTORE_B64: ${{ secrets.APEXPULSE_SIGNING_KEYSTORE_B64 }}
         run: |
@@ -144,7 +164,12 @@ jobs:
           "$ANDROID_HOME/build-tools/36.1.0/zipalign" -c -v 4 "$APK"
           CERT_INFO="$("$ANDROID_HOME/build-tools/36.1.0/apksigner" verify --verbose --print-certs "$APK")"
           CERT_SHA1="$(printf '%s\n' "$CERT_INFO" | sed -n 's/.*certificate SHA-1 digest: *//p' | head -n 1 | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
-          [[ "$CERT_SHA1" == "A70ADF61BB307148D1E064DEE91B7723D0654951" ]] || { echo "::error::APK signing certificate mismatch."; exit 1; }
+          if [[ "$EXPECT_PRODUCTION_CERT" == "true" ]]; then
+            [[ "$CERT_SHA1" == "A70ADF61BB307148D1E064DEE91B7723D0654951" ]] || { echo "::error::APK signing certificate mismatch."; exit 1; }
+            echo "Verified established ApexPulse signing identity."
+          else
+            echo "Verified signed feature-branch test APK. It uses a temporary debug identity and cannot update an installed production build."
+          fi
           VERSION_CODE="$(sed -n 's/^[[:space:]]*versionCode = \([0-9][0-9]*\)$/\1/p' app/build.gradle.kts | head -n 1)"
           VERSION_NAME="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"$/\1/p' app/build.gradle.kts | head -n 1)"
           [[ -n "$VERSION_CODE" && -n "$VERSION_NAME" ]] || { echo "::error::Could not read version metadata."; exit 1; }
