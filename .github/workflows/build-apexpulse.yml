@@ -1,0 +1,165 @@
+name: Build and publish ApexPulse
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Private ApexPulse source branch or tag to build
+        required: true
+        default: main
+        type: string
+      publish_release:
+        description: Publish this verified build to the in-app update channel
+        required: true
+        default: false
+        type: boolean
+      release_notes:
+        description: Release notes (used only when publishing)
+        required: false
+        default: "ApexPulse update"
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apexpulse-release-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout release repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout private ApexPulse source
+        uses: actions/checkout@v4
+        with:
+          repository: imposedentertainment-art/ApexPulse
+          ref: ${{ inputs.source_ref }}
+          token: ${{ secrets.APEXPULSE_SOURCE_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Validate required secrets
+        env:
+          SOURCE_TOKEN: ${{ secrets.APEXPULSE_SOURCE_TOKEN }}
+          SIGNING_KEYSTORE_B64: ${{ secrets.APEXPULSE_SIGNING_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          [[ -n "$SOURCE_TOKEN" ]] || { echo "::error::Missing APEXPULSE_SOURCE_TOKEN secret."; exit 1; }
+          [[ -n "$SIGNING_KEYSTORE_B64" ]] || { echo "::error::Missing APEXPULSE_SIGNING_KEYSTORE_B64 secret."; exit 1; }
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.9.2"
+
+      - name: Install Android SDK components
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platforms;android-37" "build-tools;36.1.0"
+
+      - name: Restore the established ApexPulse signing identity
+        env:
+          SIGNING_KEYSTORE_B64: ${{ secrets.APEXPULSE_SIGNING_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android"
+          printf '%s' "$SIGNING_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
+          CERT_SHA1="$(keytool -list -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey 2>/dev/null | sed -n 's/.*SHA1: *//p' | head -n 1 | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+          EXPECTED="A70ADF61BB307148D1E064DEE91B7723D0654951"
+          [[ "$CERT_SHA1" == "$EXPECTED" ]] || { echo "::error::Signing keystore does not match the installed ApexPulse certificate. Refusing to build."; exit 1; }
+          echo "Verified the established ApexPulse signing certificate."
+
+      - name: Run unit tests and build APK
+        working-directory: source
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --max-workers=2 :app:testDebugUnitTest :app:assembleDebug
+
+      - name: Verify APK, package, version and signing identity
+        id: verify
+        working-directory: source
+        run: |
+          set -euo pipefail
+          APK="$PWD/app/build/outputs/apk/debug/app-debug.apk"
+          [[ -s "$APK" ]] || { echo "::error::Gradle did not produce the APK."; exit 1; }
+          zipalign -c -v 4 "$APK"
+          CERT_INFO="$(apksigner verify --verbose --print-certs "$APK")"
+          CERT_SHA1="$(printf '%s\n' "$CERT_INFO" | sed -n 's/.*certificate SHA-1 digest: *//p' | head -n 1 | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
+          [[ "$CERT_SHA1" == "A70ADF61BB307148D1E064DEE91B7723D0654951" ]] || { echo "::error::APK signing certificate mismatch."; exit 1; }
+          VERSION_CODE="$(sed -n 's/^[[:space:]]*versionCode = \([0-9][0-9]*\)$/\1/p' app/build.gradle.kts | head -n 1)"
+          VERSION_NAME="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"$/\1/p' app/build.gradle.kts | head -n 1)"
+          [[ -n "$VERSION_CODE" && -n "$VERSION_NAME" ]] || { echo "::error::Could not read version metadata."; exit 1; }
+          BADGING="$ANDROID_HOME/build-tools/36.1.0/aapt2 dump badging "$APK""
+          grep -F "package: name='com.apexpulse.app' versionCode='$VERSION_CODE' versionName='$VERSION_NAME'" <<< "$BADGING" >/dev/null
+          SHA256="$(sha256sum "$APK" | awk '{print $1}')"
+          echo "apk=$APK" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          echo "APK verified: $VERSION_NAME ($VERSION_CODE), SHA-256 $SHA256"
+
+      - name: Upload test build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ApexPulse-${{ steps.verify.outputs.version }}-${{ steps.verify.outputs.version_code }}
+          path: ${{ steps.verify.outputs.apk }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish signed APK release
+        if: ${{ inputs.publish_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.verify.outputs.version }}
+          VERSION_CODE: ${{ steps.verify.outputs.version_code }}
+          APK_SHA256: ${{ steps.verify.outputs.sha256 }}
+          APK_PATH: ${{ steps.verify.outputs.apk }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_REF" == "main" ]] || { echo "::error::Publishing is only allowed from the private source repository's main branch."; exit 1; }
+          CURRENT_CODE="$(jq -r '.versionCode // 0' latest.json)"
+          if (( VERSION_CODE <= CURRENT_CODE )); then
+            echo "::error::Refusing to publish versionCode $VERSION_CODE; current published versionCode is $CURRENT_CODE. Bump app/build.gradle.kts first."
+            exit 1
+          fi
+          TAG="v$VERSION"
+          ASSET="ApexPulse-$VERSION.apk"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK_PATH#$ASSET" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" "$APK_PATH#$ASSET" --repo "$GITHUB_REPOSITORY" --title "ApexPulse $VERSION" --notes "$RELEASE_NOTES"
+          fi
+          DOWNLOAD_URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$ASSET"
+          jq -n \
+            --arg version "$VERSION" \
+            --argjson versionCode "$VERSION_CODE" \
+            --arg minimumVersion "1.2.1" \
+            --arg downloadUrl "$DOWNLOAD_URL" \
+            --arg sha256 "$APK_SHA256" \
+            --arg releaseNotes "$RELEASE_NOTES" \
+            '{version:$version,versionCode:$versionCode,minimumVersion:$minimumVersion,downloadUrl:$downloadUrl,sha256:$sha256,releaseNotes:$releaseNotes}' > latest.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add latest.json
+          git commit -m "Publish ApexPulse $VERSION update manifest"
+          git push origin HEAD:main
+          echo "Published $TAG and updated latest.json. Installed apps can now check for this update."
