@@ -40,8 +40,9 @@ The current Termux signing backup is normally at:
 Because Android keeps Termux's private home separate from shared storage, exporting this key requires one final, one-time Termux operation. Run this in the ApexPulse Termux environment. It checks both known key locations and exports only the key whose SHA-1 matches the installed app:
 
 ```bash
+set -euo pipefail
 EXPECTED="A70ADF61BB307148D1E064DEE91B7723D0654951"
-mkdir -p "$HOME/storage/downloads"
+[ -d "$HOME/storage/downloads" ] || { echo "Run termux-setup-storage and grant storage access, then rerun this command."; exit 1; }
 for KEY in "$HOME/.android/debug.keystore" "$HOME/ApexPulse-signing-backup/apexpulse-release.keystore"; do
   [ -s "$KEY" ] || continue
   SHA1="$(keytool -list -v -keystore "$KEY" -storepass android -alias androiddebugkey 2>/dev/null | sed -n 's/.*SHA1: *//p' | head -n 1 | tr -d ':[:space:]' | tr '[:lower:]' '[:upper:]')"
