@@ -225,10 +225,12 @@ jobs:
           fi
           TAG="v$VERSION"
           ASSET="ApexPulse-$VERSION.apk"
+          NAMED_APK="$RUNNER_TEMP/$ASSET"
+          cp "$APK_PATH" "$NAMED_APK"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$APK_PATH#$ASSET" --repo "$GITHUB_REPOSITORY" --clobber
+            gh release upload "$TAG" "$NAMED_APK" --repo "$GITHUB_REPOSITORY" --clobber
           else
-            gh release create "$TAG" "$APK_PATH#$ASSET" --repo "$GITHUB_REPOSITORY" --title "ApexPulse $VERSION" --notes "$RELEASE_NOTES"
+            gh release create "$TAG" "$NAMED_APK" --repo "$GITHUB_REPOSITORY" --title "ApexPulse $VERSION" --notes "$RELEASE_NOTES"
           fi
           DOWNLOAD_URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$ASSET"
           REMOTE_APK="$(mktemp)"
