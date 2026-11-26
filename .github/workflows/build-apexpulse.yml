@@ -6,6 +6,7 @@ name: Build and publish ApexPulse
 # Verify the extracted StatsScreen source and the updated feature-branch tree.
 # Verify ExploreScreen extraction and shared artwork visibility.
 # Verify saved navigation state and the complete screen extraction pass.
+# Verify HomeScreen extraction and reusable driver-hub components.
 
 on:
   push:
