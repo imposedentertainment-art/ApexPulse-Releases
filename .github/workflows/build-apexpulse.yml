@@ -130,7 +130,7 @@ jobs:
         if: ${{ steps.gate.outputs.should_build == 'true' }}
         run: |
           yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platforms;android-37" "build-tools;36.1.0"
+          sdkmanager "platforms;android-36" "build-tools;36.1.0"
 
       - name: Restore the established ApexPulse signing identity
         if: ${{ steps.gate.outputs.should_build == 'true' && steps.preflight.outputs.use_production_signing == 'true' }}
