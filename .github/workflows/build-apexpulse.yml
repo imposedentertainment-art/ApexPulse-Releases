@@ -5,6 +5,7 @@ name: Build and publish ApexPulse
 # Final validation includes the Home screen live-versus-silent status treatment.
 # Verify the extracted StatsScreen source and the updated feature-branch tree.
 # Verify ExploreScreen extraction and shared artwork visibility.
+# Verify saved navigation state and the complete screen extraction pass.
 
 on:
   push:
