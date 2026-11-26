@@ -91,6 +91,17 @@ jobs:
           path: source
           persist-credentials: false
 
+      - name: Validate source shell scripts
+        if: ${{ steps.preflight.outputs.should_run == 'true' }}
+        working-directory: source
+        run: |
+          set -euo pipefail
+          for script in scripts/*.sh; do
+            [[ -f "$script" ]] || continue
+            bash -n "$script"
+            echo "Shell syntax OK: $script"
+          done
+
       - name: Check whether a build is due
         id: gate
         if: ${{ steps.preflight.outputs.should_run == 'true' }}
