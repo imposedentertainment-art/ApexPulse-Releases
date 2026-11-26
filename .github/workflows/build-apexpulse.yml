@@ -178,8 +178,8 @@ jobs:
           [[ -n "$VERSION_CODE" && -n "$VERSION_NAME" ]] || { echo "::error::Could not read version metadata."; exit 1; }
           BADGING="$("$ANDROID_HOME/build-tools/36.1.0/aapt2" dump badging "$APK")"
           grep -F "package: name='com.apexpulse.app' versionCode='$VERSION_CODE' versionName='$VERSION_NAME'" <<< "$BADGING" >/dev/null
-          MIN_SDK="$(printf '%s\n' "$BADGING" | sed -n "s/^sdkVersion:'\([^']*\)'.*/\1/p" | head -n 1)"
-          TARGET_SDK="$(printf '%s\n' "$BADGING" | sed -n "s/^targetSdkVersion:'\([^']*\)'.*/\1/p" | head -n 1)"
+          MIN_SDK="$(printf '%s\n' "$BADGING" | grep -oE "sdkVersion:'[0-9]+'" | head -n 1 | cut -d"'" -f2 || true)"
+          TARGET_SDK="$(printf '%s\n' "$BADGING" | grep -oE "targetSdkVersion:'[0-9]+'" | head -n 1 | cut -d"'" -f2 || true)"
           [[ "$MIN_SDK" == "26" ]] || { echo "::error::Unexpected minSdk '$MIN_SDK'; expected 26."; printf '%s\n' "$BADGING"; exit 1; }
           [[ "$TARGET_SDK" == "36" ]] || { echo "::error::Unexpected targetSdk '$TARGET_SDK'; expected 36 until Android 17 LAN permission handling is implemented."; printf '%s\n' "$BADGING"; exit 1; }
           SHA256="$(sha256sum "$APK" | awk '{print $1}')"
