@@ -8,6 +8,7 @@ name: Build and publish ApexPulse
 # Verify saved navigation state and the complete screen extraction pass.
 # Verify HomeScreen extraction and reusable driver-hub components.
 # Rebuild after correcting the HomeScreen commit target to the 1.4 feature branch.
+# Verify the dedicated Race Centre source and its device-discovery components.
 
 on:
   push:
