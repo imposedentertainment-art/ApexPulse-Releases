@@ -16,6 +16,7 @@ name: Build and publish ApexPulse
 # Re-run MFD unit tests using the repository's existing JUnit test API.
 # Verify streamed session analytics and Stats archive metrics.
 # Verify F1 2026 session/lap/status/damage decoding, packet assembly and expanded MFD.
+# Verify session-history best-lap handling, valid-lap filtering and its CSV/MFD integration.
 
 on:
   push:
