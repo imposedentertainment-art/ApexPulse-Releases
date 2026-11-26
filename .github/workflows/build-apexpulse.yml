@@ -1,4 +1,5 @@
 name: Build and publish ApexPulse
+# Push-triggered feature builds validate the draft only; releases publish on schedule or explicit approved dispatch.
 
 on:
   push:
