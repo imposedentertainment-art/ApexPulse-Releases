@@ -7,6 +7,7 @@ name: Build and publish ApexPulse
 # Verify ExploreScreen extraction and shared artwork visibility.
 # Verify saved navigation state and the complete screen extraction pass.
 # Verify HomeScreen extraction and reusable driver-hub components.
+# Rebuild after correcting the HomeScreen commit target to the 1.4 feature branch.
 
 on:
   push:
