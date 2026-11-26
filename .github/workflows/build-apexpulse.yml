@@ -1,6 +1,6 @@
 name: Build and publish ApexPulse
-# Push-triggered feature builds validate the draft only; releases publish on schedule or explicit approved dispatch.
-# Keep the feature build path non-publishing while draft changes are exercised against production tooling.
+# A workflow-file push after source promotion builds and publishes private ApexPulse main.
+# Scheduled checks remain as a fallback; feature test builds are non-publishing.
 # Exercise receiver shutdown-state handling on the next hosted feature verification.
 # Final validation includes the Home screen live-versus-silent status treatment.
 # Verify the extracted StatsScreen source and the updated feature-branch tree.
@@ -69,7 +69,7 @@ jobs:
         env:
           SOURCE_TOKEN: ${{ secrets.APEXPULSE_SOURCE_TOKEN }}
           SIGNING_KEYSTORE_B64: ${{ secrets.APEXPULSE_SIGNING_KEYSTORE_B64 }}
-          SOURCE_REF: ${{ inputs.source_ref || (github.event_name == 'push' && 'release/apexpulse-1.4.0') || 'main' }}
+          SOURCE_REF: ${{ inputs.source_ref || 'main' }}
           PUBLISH_RELEASE: ${{ inputs.publish_release }}
         run: |
           set -euo pipefail
@@ -107,7 +107,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: imposedentertainment-art/ApexPulse
-          ref: ${{ inputs.source_ref || (github.event_name == 'push' && 'release/apexpulse-1.4.0') || 'main' }}
+          ref: ${{ inputs.source_ref || 'main' }}
           token: ${{ secrets.APEXPULSE_SOURCE_TOKEN }}
           path: source
           persist-credentials: false
@@ -236,7 +236,7 @@ jobs:
           retention-days: 14
 
       - name: Publish signed APK release
-        if: ${{ steps.gate.outputs.should_build == 'true' && (github.event_name == 'schedule' || inputs.publish_release) }}
+        if: ${{ steps.gate.outputs.should_build == 'true' && (github.event_name == 'schedule' || github.event_name == 'push' || inputs.publish_release) }}
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.verify.outputs.version }}
@@ -247,7 +247,7 @@ jobs:
           SOURCE_REF: ${{ inputs.source_ref || 'main' }}
         run: |
           set -euo pipefail
-          RELEASE_NOTES="${RELEASE_NOTES:-Automated ApexPulse update}"
+          RELEASE_NOTES="${RELEASE_NOTES:-ApexPulse 1.4.0: native cockpit architecture, disconnected MFD preview, F1 2026-format telemetry, session recording and reliability improvements.}"
           [[ "$SOURCE_REF" == "main" ]] || { echo "::error::Publishing is only allowed from the private source repository's main branch."; exit 1; }
           CURRENT_CODE="$(jq -r '.versionCode // 0' latest.json)"
           CURRENT_VERSION="$(jq -r '.version // "0.0.0"' latest.json)"
