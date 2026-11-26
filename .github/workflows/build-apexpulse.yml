@@ -191,7 +191,7 @@ jobs:
 
       - name: Upload test build artifact
         if: ${{ steps.gate.outputs.should_build == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ApexPulse-${{ steps.verify.outputs.version }}-${{ steps.verify.outputs.version_code }}
           path: ${{ steps.verify.outputs.apk }}
