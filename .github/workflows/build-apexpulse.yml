@@ -18,6 +18,7 @@ name: Build and publish ApexPulse
 # Verify F1 2026 session/lap/status/damage decoding, packet assembly and expanded MFD.
 # Verify session-history best-lap handling, valid-lap filtering and its CSV/MFD integration.
 # Verify the disconnected Cockpit MFD zero-value preview on the 1.4 feature branch.
+# Recheck Home preview navigation after exposing the offline cockpit entry point.
 # Re-run after removing a duplicate best-lap test-fixture declaration.
 
 on:
