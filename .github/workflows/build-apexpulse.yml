@@ -13,6 +13,7 @@ name: Build and publish ApexPulse
 # Re-run after adding the shared typography import required by UiComponents.
 # Verify the source-aware MFD pages and the complete screen architecture.
 # Run the new MFD projection regression tests after extracting the pure data projection.
+# Re-run MFD unit tests using the repository's existing JUnit test API.
 
 on:
   push:
