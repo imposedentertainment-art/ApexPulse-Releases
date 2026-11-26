@@ -145,6 +145,7 @@ jobs:
           EXPECTED="A70ADF61BB307148D1E064DEE91B7723D0654951"
           [[ "$CERT_SHA1" == "$EXPECTED" ]] || { echo "::error::Signing keystore does not match the installed ApexPulse certificate. Refusing to build."; exit 1; }
           echo "Verified the established ApexPulse signing certificate."
+          echo "APEXPULSE_SIGNING_KEYSTORE=$HOME/.android/debug.keystore" >> "$GITHUB_ENV"
 
       - name: Run unit tests and build APK
         if: ${{ steps.gate.outputs.should_build == 'true' }}
