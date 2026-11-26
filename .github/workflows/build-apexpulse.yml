@@ -15,6 +15,7 @@ name: Build and publish ApexPulse
 # Run the new MFD projection regression tests after extracting the pure data projection.
 # Re-run MFD unit tests using the repository's existing JUnit test API.
 # Verify streamed session analytics and Stats archive metrics.
+# Verify F1 2026 session/lap/status/damage decoding, packet assembly and expanded MFD.
 
 on:
   push:
