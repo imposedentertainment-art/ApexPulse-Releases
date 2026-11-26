@@ -4,6 +4,7 @@ name: Build and publish ApexPulse
 # Exercise receiver shutdown-state handling on the next hosted feature verification.
 # Final validation includes the Home screen live-versus-silent status treatment.
 # Verify the extracted StatsScreen source and the updated feature-branch tree.
+# Verify ExploreScreen extraction and shared artwork visibility.
 
 on:
   push:
