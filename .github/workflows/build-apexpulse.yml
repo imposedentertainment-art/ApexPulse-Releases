@@ -173,7 +173,9 @@ jobs:
         if: ${{ steps.gate.outputs.should_build == 'true' }}
         run: |
           yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platforms;android-37.0" "build-tools;36.1.0" "emulator" "system-images;android-36;google_apis;x86_64"
+          # API 30 AOSP ATD is a CI-focused image with unnecessary services removed.
+          # It supports this app's minSdk 26 and avoids the extremely slow API 36 x86_64 TCG boot.
+          sdkmanager "platforms;android-37.0" "build-tools;36.1.0" "emulator" "system-images;android-30;aosp_atd;x86"
 
       - name: Restore the established ApexPulse signing identity
         if: ${{ steps.gate.outputs.should_build == 'true' && steps.preflight.outputs.use_production_signing == 'true' }}
@@ -243,7 +245,7 @@ jobs:
           echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
           echo "APK verified: $VERSION_NAME ($VERSION_CODE), SHA-256 $SHA256"
 
-      - name: Install and launch release APK on Android emulator
+      - name: Install and launch release APK on Android ATD
         if: ${{ steps.gate.outputs.should_build == 'true' }}
         timeout-minutes: 12
         env:
@@ -255,7 +257,7 @@ jobs:
           # Force avdmanager and emulator to use the same explicit AVD directory.
           export ANDROID_AVD_HOME="$HOME/.android/avd"
           mkdir -p "$ANDROID_AVD_HOME"
-          IMAGE="system-images;android-36;google_apis;x86_64"
+          IMAGE="system-images;android-30;aosp_atd;x86"
           AVDMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
           printf 'no\n' | "$AVDMANAGER" -v create avd -f -n "$AVD_NAME" -k "$IMAGE" -d "pixel_2"
 
@@ -306,7 +308,7 @@ jobs:
             adb devices -l || true
             echo "Emulator startup log:"
             cat "$RUNNER_TEMP/apexpulse-release-emulator.log"
-            echo "::error::Android emulator did not finish booting within 600 seconds."
+            echo "::error::Android API 30 ATD did not finish booting within 600 seconds."
             exit 1
           fi
 
@@ -328,7 +330,7 @@ jobs:
             echo "::error::Release APK crashed during emulator startup."
             exit 1
           fi
-          echo "Production-signed ApexPulse APK installed and MainActivity remained running on Android API 36."
+          echo "Production-signed ApexPulse APK installed and MainActivity remained running on Android API 30 AOSP ATD."
 
       - name: Upload test build artifact
         if: ${{ steps.gate.outputs.should_build == 'true' }}
