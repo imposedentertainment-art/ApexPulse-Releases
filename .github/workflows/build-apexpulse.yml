@@ -249,13 +249,13 @@ jobs:
         run: |
           set -euo pipefail
           AVD_NAME="ApexPulseReleaseSmoke"
-          echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \\
-            --force --name "$AVD_NAME" \\
-            --package "system-images;android-36;google_apis;x86_64" \\
+          echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+            --force --name "$AVD_NAME" \
+            --package "system-images;android-36;google_apis;x86_64" \
             --device "pixel_2"
 
-          "$ANDROID_HOME/emulator/emulator" -avd "$AVD_NAME" \\
-            -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data \\
+          "$ANDROID_HOME/emulator/emulator" -avd "$AVD_NAME" \
+            -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data \
             -gpu swiftshader_indirect > "$RUNNER_TEMP/apexpulse-release-emulator.log" 2>&1 &
           EMULATOR_PID=$!
           trap 'kill "$EMULATOR_PID" 2>/dev/null || true' EXIT
@@ -263,7 +263,7 @@ jobs:
           adb wait-for-device
           BOOTED=false
           for attempt in $(seq 1 120); do
-            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\\r')" == "1" ]]; then
+            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
               BOOTED=true
               break
             fi
@@ -282,13 +282,13 @@ jobs:
           adb shell am start -W -n com.apexpulse.app/.MainActivity
           sleep 5
 
-          APP_PID="$(adb shell pidof -s com.apexpulse.app | tr -d '\\r')"
+          APP_PID="$(adb shell pidof -s com.apexpulse.app | tr -d '\r')"
           if [[ -z "$APP_PID" ]]; then
             adb logcat -d -t 3000
             echo "::error::Release APK did not remain running after launch."
             exit 1
           fi
-          if adb logcat -d --pid="$APP_PID" | grep -E "FATAL EXCEPTION|Process: com\\\\.apexpulse\\\\.app.*has died" >/dev/null; then
+          if adb logcat -d --pid="$APP_PID" | grep -E "FATAL EXCEPTION|Process: com\\.apexpulse\\.app.*has died" >/dev/null; then
             adb logcat -d --pid="$APP_PID"
             echo "::error::Release APK crashed during emulator startup."
             exit 1
