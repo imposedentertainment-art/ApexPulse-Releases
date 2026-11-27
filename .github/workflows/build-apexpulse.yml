@@ -244,58 +244,43 @@ jobs:
 
       - name: Install and launch release APK on Android emulator
         if: ${{ steps.gate.outputs.should_build == 'true' }}
-        timeout-minutes: 12
+        timeout-minutes: 15
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         env:
           APK_PATH: ${{ steps.verify.outputs.apk }}
-          ANDROID_SERIAL: emulator-5554
-        run: |
-          set -euo pipefail
-          AVD_NAME="ApexPulseReleaseSmoke"
-          echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
-            --force --name "$AVD_NAME" \
-            --package "system-images;android-36;google_apis;x86_64" \
-            --device "pixel_2"
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          cores: 2
+          ram-size: 2048M
+          emulator-boot-timeout: 600
+          # Standard GitHub-hosted runners may not expose nested KVM acceleration.
+          disable-linux-hw-accel: true
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: |
+            set -euo pipefail
+            [[ -s "$APK_PATH" ]] || { echo "::error::Verified release APK is missing."; exit 1; }
+            adb install -r "$APK_PATH"
+            adb logcat -c
+            adb shell am force-stop com.apexpulse.app
+            adb shell am start -W -n com.apexpulse.app/.MainActivity
+            sleep 5
 
-          "$ANDROID_HOME/emulator/emulator" -avd "$AVD_NAME" \
-            -no-window -no-audio -no-boot-anim -no-snapshot -wipe-data \
-            -gpu swiftshader_indirect > "$RUNNER_TEMP/apexpulse-release-emulator.log" 2>&1 &
-          EMULATOR_PID=$!
-          trap 'kill "$EMULATOR_PID" 2>/dev/null || true' EXIT
-
-          adb wait-for-device
-          BOOTED=false
-          for attempt in $(seq 1 120); do
-            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
-              BOOTED=true
-              break
+            APP_PID="$(adb shell pidof -s com.apexpulse.app | tr -d '\r')"
+            if [[ -z "$APP_PID" ]]; then
+              adb logcat -d -t 3000
+              echo "::error::Release APK did not remain running after launch."
+              exit 1
             fi
-            sleep 3
-          done
-          if [[ "$BOOTED" != "true" ]]; then
-            cat "$RUNNER_TEMP/apexpulse-release-emulator.log"
-            echo "::error::Android emulator did not finish booting."
-            exit 1
-          fi
-
-          [[ -s "$APK_PATH" ]] || { echo "::error::Verified release APK is missing."; exit 1; }
-          adb install -r "$APK_PATH"
-          adb logcat -c
-          adb shell am force-stop com.apexpulse.app
-          adb shell am start -W -n com.apexpulse.app/.MainActivity
-          sleep 5
-
-          APP_PID="$(adb shell pidof -s com.apexpulse.app | tr -d '\r')"
-          if [[ -z "$APP_PID" ]]; then
-            adb logcat -d -t 3000
-            echo "::error::Release APK did not remain running after launch."
-            exit 1
-          fi
-          if adb logcat -d --pid="$APP_PID" | grep -E "FATAL EXCEPTION|Process: com\\.apexpulse\\.app.*has died" >/dev/null; then
-            adb logcat -d --pid="$APP_PID"
-            echo "::error::Release APK crashed during emulator startup."
-            exit 1
-          fi
-          echo "Production-signed ApexPulse APK installed and MainActivity remained running on Android API 36."
+            if adb logcat -d --pid="$APP_PID" | grep -E "FATAL EXCEPTION|Process: com\\.apexpulse\\.app.*has died" >/dev/null; then
+              adb logcat -d --pid="$APP_PID"
+              echo "::error::Release APK crashed during emulator startup."
+              exit 1
+            fi
+            echo "Production-signed ApexPulse APK installed and MainActivity remained running on Android API 36."
 
       - name: Upload test build artifact
         if: ${{ steps.gate.outputs.should_build == 'true' }}
