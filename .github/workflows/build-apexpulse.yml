@@ -252,10 +252,24 @@ jobs:
         run: |
           set -euo pipefail
           AVD_NAME="ApexPulseReleaseSmoke"
-          echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
-            --force --name "$AVD_NAME" \
-            --package "system-images;android-36;google_apis;x86_64" \
-            --device "pixel_2"
+          # Force avdmanager and emulator to use the same explicit AVD directory.
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          IMAGE="system-images;android-36;google_apis;x86_64"
+          AVDMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
+          printf 'no\n' | "$AVDMANAGER" -v create avd -f -n "$AVD_NAME" -k "$IMAGE" -d "pixel_2"
+
+          if ! "$ANDROID_HOME/emulator/emulator" -list-avds | grep -Fx "$AVD_NAME" >/dev/null; then
+            echo "AVD creation diagnostics:"
+            "$AVDMANAGER" list avd || true
+            echo "::error::Android Virtual Device was not created in $ANDROID_AVD_HOME."
+            exit 1
+          fi
+          [[ -f "$ANDROID_AVD_HOME/$AVD_NAME.ini" && -d "$ANDROID_AVD_HOME/$AVD_NAME.avd" ]] || {
+            echo "::error::AVD files are missing from $ANDROID_AVD_HOME."
+            ls -la "$ANDROID_AVD_HOME" || true
+            exit 1
+          }
 
           "$ANDROID_HOME/emulator/emulator" -port 5554 -avd "$AVD_NAME" \
             -no-window -no-audio -no-boot-anim -no-snapshot \
