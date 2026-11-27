@@ -1,8 +1,8 @@
 {
-  "version": "1.4.0",
-  "versionCode": 8,
+  "version": "1.5.0",
+  "versionCode": 9,
   "minimumVersion": "1.2.1",
-  "downloadUrl": "https://github.com/imposedentertainment-art/ApexPulse-Releases/releases/download/v1.4.0/ApexPulse-1.4.0.apk",
-  "sha256": "c15422fc8281ee8254b6d83da2e56c4a2ae07b5499f787684ce8fd91d1202e6d",
+  "downloadUrl": "https://github.com/imposedentertainment-art/ApexPulse-Releases/releases/download/v1.5.0/ApexPulse-1.5.0.apk",
+  "sha256": "e414d246a78dda4e8028f7e3c0818c9e4454ae43876d4b0ec9e74dd174867e61",
   "releaseNotes": "ApexPulse 1.4.0: native cockpit architecture, disconnected MFD preview, F1 2026-format telemetry, session recording and reliability improvements."
 }
