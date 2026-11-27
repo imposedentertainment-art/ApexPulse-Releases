@@ -29,7 +29,7 @@ on:
     paths:
       - ".github/workflows/build-apexpulse.yml"
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       source_ref:
