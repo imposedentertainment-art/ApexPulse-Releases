@@ -248,6 +248,8 @@ jobs:
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         env:
           APK_PATH: ${{ steps.verify.outputs.apk }}
+          # Required by the Android Emulator to opt into TCG when KVM is unavailable.
+          ANDROID_I_WANT_MY_TCG: "yes"
         with:
           api-level: 36
           target: google_apis
