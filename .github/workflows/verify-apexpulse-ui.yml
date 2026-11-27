@@ -3,7 +3,8 @@ name: Verify ApexPulse UI overhaul
 # Re-run this workflow after every source-branch UI or reliability change.
 # Includes latest UI truthfulness fixes and cellular update-routing changes (Nov 27).
 # Re-run after navigation icon modernization, warning cleanup, and strengthened default-network helper tests.
-# Source branch head at request time: 5f847e114fbe652ade95f266d4abe0ac9c1d1fdc
+# Source branch head at request time: ac38283dfda6b5ebaf81722f6cc6b3deb0eeea28
+# Includes corrected F1 2026 overtake armed-state and active-aero availability reporting.
 
 on:
   push:
