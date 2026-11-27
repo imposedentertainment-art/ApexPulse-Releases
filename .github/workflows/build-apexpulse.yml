@@ -261,7 +261,7 @@ jobs:
           SOURCE_REF: ${{ inputs.source_ref || 'main' }}
         run: |
           set -euo pipefail
-          RELEASE_NOTES="${RELEASE_NOTES:-ApexPulse 1.4.0: native cockpit architecture, disconnected MFD preview, F1 2026-format telemetry, session recording and reliability improvements.}"
+          RELEASE_NOTES="${RELEASE_NOTES:-ApexPulse $VERSION: unified F1 device identity, telemetry receiver recovery, MFD improvements, Settings and Permissions Manager, background reliability controls, and automatic update notifications.}"
           [[ "$SOURCE_REF" == "main" ]] || { echo "::error::Publishing is only allowed from the private source repository's main branch."; exit 1; }
           CURRENT_CODE="$(jq -r '.versionCode // 0' latest.json)"
           CURRENT_VERSION="$(jq -r '.version // "0.0.0"' latest.json)"
