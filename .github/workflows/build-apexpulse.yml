@@ -1,5 +1,5 @@
 name: Build and publish ApexPulse
-# A workflow-file push after source promotion builds and publishes private ApexPulse main.
+# Scheduled checks publish only after private ApexPulse main advances its app version.
 # Build and publish the promoted ApexPulse 1.5.0 app update.
 # Scheduled checks remain as a fallback; feature test builds are non-publishing.
 # Exercise receiver shutdown-state handling on the next hosted feature verification.
@@ -24,10 +24,7 @@ name: Build and publish ApexPulse
 # Re-run after removing a duplicate best-lap test-fixture declaration.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/build-apexpulse.yml"
+  # Poll the private source repository at GitHub's shortest supported schedule interval.
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
