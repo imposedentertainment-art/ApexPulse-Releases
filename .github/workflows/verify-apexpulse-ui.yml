@@ -1,6 +1,7 @@
 name: Verify ApexPulse UI overhaul
 # Non-publishing feature-branch build; never updates latest.json or a release tag.
 # Re-run this workflow after every source-branch UI or reliability change.
+# Includes latest UI truthfulness fixes and cellular update-routing changes (Nov 27).
 
 on:
   push:
