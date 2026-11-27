@@ -1,8 +1,8 @@
 {
-  "version": "1.6.0",
-  "versionCode": 10,
+  "version": "1.6.1",
+  "versionCode": 11,
   "minimumVersion": "1.2.1",
-  "downloadUrl": "https://github.com/imposedentertainment-art/ApexPulse-Releases/releases/download/v1.6.0/ApexPulse-1.6.0.apk",
-  "sha256": "05fb9c757abbeba41706229c87d4c0ce5fb0dbe42fab04e0452291e39b716022",
-  "releaseNotes": "ApexPulse 1.6.0: unified F1 device identity, telemetry receiver recovery, MFD improvements, Settings and Permissions Manager, background reliability controls, and automatic update notifications."
+  "downloadUrl": "https://github.com/imposedentertainment-art/ApexPulse-Releases/releases/download/v1.6.1/ApexPulse-1.6.1.apk",
+  "sha256": "f3b2c7cf4c1bbd974e8d032a6173684db15704ead24260da5914645d7f7d8d87",
+  "releaseNotes": "ApexPulse 1.6.1: verified maintenance update, one-tap in-app updates, and faster release discovery."
 }
