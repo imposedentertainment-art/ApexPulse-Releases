@@ -130,10 +130,12 @@ jobs:
         working-directory: source
         run: |
           set -euo pipefail
-          if [[ "$GITHUB_EVENT_NAME" != "schedule" ]]; then
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # Scheduled checks and workflow-file pushes build only when source main
+          # has a version newer than the public update manifest.
           SOURCE_CODE="$(sed -n 's/^[[:space:]]*versionCode = \([0-9][0-9]*\)$/\1/p' app/build.gradle.kts | head -n 1)"
           SOURCE_VERSION="$(sed -n 's/^[[:space:]]*versionName = "\([^"]*\)"$/\1/p' app/build.gradle.kts | head -n 1)"
           CURRENT_CODE="$(jq -r '.versionCode // 0' "$GITHUB_WORKSPACE/latest.json")"
