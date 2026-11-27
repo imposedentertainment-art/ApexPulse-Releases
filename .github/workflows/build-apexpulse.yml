@@ -168,7 +168,7 @@ jobs:
         if: ${{ steps.gate.outputs.should_build == 'true' }}
         run: |
           yes | sdkmanager --licenses >/dev/null
-          sdkmanager "platforms;android-37.0" "build-tools;36.1.0"
+          sdkmanager "platforms;android-37" "build-tools;36.1.0"
 
       - name: Restore the established ApexPulse signing identity
         if: ${{ steps.gate.outputs.should_build == 'true' && steps.preflight.outputs.use_production_signing == 'true' }}
@@ -187,10 +187,20 @@ jobs:
 
       - name: Run unit tests and build APK
         if: ${{ steps.gate.outputs.should_build == 'true' }}
+        id: build
         working-directory: source
+        env:
+          USE_PRODUCTION_SIGNING: ${{ steps.preflight.outputs.use_production_signing }}
         run: |
           set -euo pipefail
-          gradle --no-daemon --max-workers=2 :app:testDebugUnitTest :app:assembleDebug
+          gradle --no-daemon --max-workers=2 :app:testDebugUnitTest
+          if [[ "$USE_PRODUCTION_SIGNING" == "true" ]]; then
+            gradle --no-daemon --max-workers=2 :app:assembleRelease
+            echo "apk_relative=app/build/outputs/apk/release/app-release.apk" >> "$GITHUB_OUTPUT"
+          else
+            gradle --no-daemon --max-workers=2 :app:assembleDebug
+            echo "apk_relative=app/build/outputs/apk/debug/app-debug.apk" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Verify APK, package, version and signing identity
         if: ${{ steps.gate.outputs.should_build == 'true' }}
@@ -198,9 +208,10 @@ jobs:
         working-directory: source
         env:
           EXPECT_PRODUCTION_CERT: ${{ steps.preflight.outputs.use_production_signing }}
+          APK_RELATIVE: ${{ steps.build.outputs.apk_relative }}
         run: |
           set -euo pipefail
-          APK="$PWD/app/build/outputs/apk/debug/app-debug.apk"
+          APK="$PWD/$APK_RELATIVE"
           [[ -s "$APK" ]] || { echo "::error::Gradle did not produce the APK."; exit 1; }
           "$ANDROID_HOME/build-tools/36.1.0/zipalign" -c -v 4 "$APK"
           CERT_INFO="$("$ANDROID_HOME/build-tools/36.1.0/apksigner" verify --verbose --print-certs "$APK")"
