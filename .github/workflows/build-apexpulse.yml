@@ -55,7 +55,8 @@ permissions:
 
 concurrency:
   group: apexpulse-release-build
-  cancel-in-progress: false
+  # A workflow-config push replaces a stale in-flight attempt; scheduled/manual runs do not cancel each other.
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 jobs:
   build:
@@ -244,45 +245,76 @@ jobs:
 
       - name: Install and launch release APK on Android emulator
         if: ${{ steps.gate.outputs.should_build == 'true' }}
-        timeout-minutes: 15
-        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        timeout-minutes: 12
         env:
           APK_PATH: ${{ steps.verify.outputs.apk }}
-          # Required by the Android Emulator to opt into TCG when KVM is unavailable.
           ANDROID_I_WANT_MY_TCG: "yes"
-        with:
-          api-level: 36
-          target: google_apis
-          arch: x86_64
-          profile: pixel_2
-          cores: 2
-          ram-size: 2048M
-          emulator-boot-timeout: 600
-          # Standard GitHub-hosted runners may not expose nested KVM acceleration.
-          disable-linux-hw-accel: true
-          disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
-          script: |
-            set -euo pipefail
-            [[ -s "$APK_PATH" ]] || { echo "::error::Verified release APK is missing."; exit 1; }
-            adb install -r "$APK_PATH"
-            adb logcat -c
-            adb shell am force-stop com.apexpulse.app
-            adb shell am start -W -n com.apexpulse.app/.MainActivity
-            sleep 5
+        run: |
+          set -euo pipefail
+          AVD_NAME="ApexPulseReleaseSmoke"
+          echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+            --force --name "$AVD_NAME" \
+            --package "system-images;android-36;google_apis;x86_64" \
+            --device "pixel_2"
 
-            APP_PID="$(adb shell pidof -s com.apexpulse.app | tr -d '\r')"
-            if [[ -z "$APP_PID" ]]; then
-              adb logcat -d -t 3000
-              echo "::error::Release APK did not remain running after launch."
+          "$ANDROID_HOME/emulator/emulator" -port 5554 -avd "$AVD_NAME" \
+            -no-window -no-audio -no-boot-anim -no-snapshot \
+            -gpu swiftshader_indirect -camera-back none -accel off \
+            > "$RUNNER_TEMP/apexpulse-release-emulator.log" 2>&1 &
+          EMULATOR_PID=$!
+
+          cleanup() {
+            timeout 5s adb -s emulator-5554 emu kill >/dev/null 2>&1 || true
+            kill "$EMULATOR_PID" 2>/dev/null || true
+            wait "$EMULATOR_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          BOOTED=false
+          BOOT_DEADLINE=$((SECONDS + 600))
+          while (( SECONDS < BOOT_DEADLINE )); do
+            if ! kill -0 "$EMULATOR_PID" 2>/dev/null; then
+              cat "$RUNNER_TEMP/apexpulse-release-emulator.log"
+              echo "::error::Android emulator process exited before boot."
               exit 1
             fi
-            if adb logcat -d --pid="$APP_PID" | grep -E "FATAL EXCEPTION|Process: com\\.apexpulse\\.app.*has died" >/dev/null; then
-              adb logcat -d --pid="$APP_PID"
-              echo "::error::Release APK crashed during emulator startup."
-              exit 1
+
+            BOOT_STATUS="$(timeout 8s adb -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' || true)"
+            if [[ "$BOOT_STATUS" == "1" ]]; then
+              BOOTED=true
+              break
             fi
-            echo "Production-signed ApexPulse APK installed and MainActivity remained running on Android API 36."
+            sleep 2
+          done
+
+          if [[ "$BOOTED" != "true" ]]; then
+            echo "ADB device status:"
+            adb devices -l || true
+            echo "Emulator startup log:"
+            cat "$RUNNER_TEMP/apexpulse-release-emulator.log"
+            echo "::error::Android emulator did not finish booting within 600 seconds."
+            exit 1
+          fi
+
+          [[ -s "$APK_PATH" ]] || { echo "::error::Verified release APK is missing."; exit 1; }
+          adb install -r "$APK_PATH"
+          adb logcat -c
+          adb shell am force-stop com.apexpulse.app
+          adb shell am start -W -n com.apexpulse.app/.MainActivity
+          sleep 5
+
+          APP_PID="$(adb shell pidof -s com.apexpulse.app | tr -d '\r')"
+          if [[ -z "$APP_PID" ]]; then
+            adb logcat -d -t 3000
+            echo "::error::Release APK did not remain running after launch."
+            exit 1
+          fi
+          if adb logcat -d --pid="$APP_PID" | grep -E "FATAL EXCEPTION|Process: com\\.apexpulse\\.app.*has died" >/dev/null; then
+            adb logcat -d --pid="$APP_PID"
+            echo "::error::Release APK crashed during emulator startup."
+            exit 1
+          fi
+          echo "Production-signed ApexPulse APK installed and MainActivity remained running on Android API 36."
 
       - name: Upload test build artifact
         if: ${{ steps.gate.outputs.should_build == 'true' }}
