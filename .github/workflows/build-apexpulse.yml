@@ -26,7 +26,7 @@ name: Build and publish ApexPulse
 on:
   # Poll the private source repository at GitHub's shortest supported schedule interval.
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       source_ref:
