@@ -1,5 +1,6 @@
 name: Build and publish ApexPulse
 # A workflow-file push after source promotion builds and publishes private ApexPulse main.
+# Build and publish the promoted ApexPulse 1.5.0 app update.
 # Scheduled checks remain as a fallback; feature test builds are non-publishing.
 # Exercise receiver shutdown-state handling on the next hosted feature verification.
 # Final validation includes the Home screen live-versus-silent status treatment.
