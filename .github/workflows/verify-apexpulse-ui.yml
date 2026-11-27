@@ -3,7 +3,8 @@ name: Verify ApexPulse UI overhaul
 # Re-run this workflow after every source-branch UI or reliability change.
 # Includes latest UI truthfulness fixes and cellular update-routing changes (Nov 27).
 # Re-run after navigation icon modernization, warning cleanup, and strengthened default-network helper tests.
-# Source branch head at request time: 713aa5aab83167e0e3ea2fa97065861183329c6c
+# Source branch head at request time: ed920b70f56490f0627f76dff6ab01bacf709bd1
+# Fixes a Compose annotation leak found by the latest hosted unit-test compilation.
 # Includes GT7 decoder rejection tests for impossible RPM and gear codes.
 # Includes Race Centre active-device status tied to fresh telemetry, with regression tests.
 # Includes F1 2026 auxiliary packet expiry and cross-session isolation tests.
