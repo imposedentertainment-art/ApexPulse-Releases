@@ -2,8 +2,8 @@ name: Verify ApexPulse UI overhaul
 # Non-publishing feature-branch build; never updates latest.json or a release tag.
 # Re-run this workflow after every source-branch UI or reliability change.
 # Includes latest UI truthfulness fixes and cellular update-routing changes (Nov 27).
-# Covers cockpit/MFD signal loss, cellular update routing, safe Race Centre connections, lap/session analysis, and both 2026 F1 packet identities.
-# Source branch head at request time: 8c064fb7dacdbc6d8003d815375142a239c51c45
+# Full five-area pass: cockpit/MFD, safe Race Centre, cellular updates, session/lap analysis, F1 25 Season Pack + F1 26 packet paths.
+# Source branch head at request time: 0e2f38bc049db51cb580ed6f14670c9ed203686b
 
 on:
   push:
