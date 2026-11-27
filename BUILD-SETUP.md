@@ -1,6 +1,6 @@
 # ApexPulse hosted build setup
 
-This repository now contains a hosted Android build and release workflow. After the one-time secrets are configured, it checks the private source repository's `main` branch every 15 minutes. When it detects a newer versionName and versionCode, it runs tests, builds and verifies the APK, publishes the release asset, and updates `latest.json`. No Termux or manual workflow run is needed for routine releases.
+This repository now contains a hosted Android build and release workflow. After the one-time secrets are configured, it checks the private source repository's `main` branch every 5 minutes. When it detects a newer versionName and versionCode, it runs tests, builds and verifies the APK, publishes the release asset, and updates `latest.json`. No Termux or manual workflow run is needed for routine releases.
 
 It runs on GitHub's standard hosted Linux runner from this **public release repository**, so it does not consume the exhausted private-source-repository Actions allowance. GitHub documents standard hosted runner use in public repositories as free and unlimited:
 https://docs.github.com/en/actions/concepts/billing-and-usage
@@ -73,7 +73,7 @@ The expected keystore uses alias `androiddebugkey` and password `android`, match
 
 ## Publishing an in-app update
 
-Routine releases are automatic after the source is reviewed and promoted to the private repository's `main` branch with a higher `versionName` and `versionCode` in `app/build.gradle.kts`. The scheduled workflow checks every 15 minutes, runs unit tests, builds the APK, verifies alignment, package/version metadata, minSdk 26, targetSdk 36 and the established signing certificate, then independently downloads the uploaded release asset and compares its SHA-256 before updating `latest.json`.
+Routine releases are automatic after the source is reviewed and promoted to the private repository's `main` branch with a higher `versionName` and `versionCode` in `app/build.gradle.kts`. The scheduled workflow checks every 5 minutes, runs unit tests, builds the APK, verifies alignment, package/version metadata, minSdk 26, targetSdk 36 and the established signing certificate, then independently downloads the uploaded release asset and compares its SHA-256 before updating `latest.json`.
 
 For an immediate/manual release, run the workflow with source ref `main` and enable **Publish this verified build**.
 
